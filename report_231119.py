@@ -1,59 +1,76 @@
-from PyPDF2 import PdfReader
-
-import threading
-from fastapi import FastAPI, Request
-from fastapi.responses import FileResponse
-from fastapi.staticfiles import StaticFiles
-from fastapi.encoders import jsonable_encoder
-from pydantic import BaseModel
-import uuid
-import asyncio
-
+# OpenAI API 키 설정
 import os
-import sys
 import openai
-from langchain.chat_models import ChatOpenAI
+
+import time
+import json
+
 from dotenv import load_dotenv
 
 load_dotenv()
 
 
-# OpenAI API 키 설정
 openai.api_key = os.getenv("OPENAI_API_KEY")
 openai.organization = os.getenv("ORGANIZATION")
-sys.path.append(os.getenv("PYTHONPATH"))
-llm_model = "gpt-3.5-turbo"
+# 또는
+# openai.api_key = 'your-api-key'
 
 
-# PDF 파일에서 텍스트 추출
-def extract_text_from_pdf(pdf_path):
-    reader = PdfReader(pdf_path)
-    text = ""
-    for page in reader.pages:
-        text += page.extract_text() + "\n"
+# PDF 문서 읽기 및 텍스트 추출
+import PyPDF2
+
+def extract_text_from_pdf(pdf_file):
+    with open(pdf_file, 'rb') as file:
+        reader = PyPDF2.PdfReader(file)
+        text = ""
+        for page in reader.pages:
+            text += page.extract_text()
     return text
 
-# OpenAI 챗봇을 사용하여 질문에 답변하는 함수
-def answer_question_with_chatbot(text, question):
-    prompt = f"{text}\n\n질문: {question}\n답변:"
+
+# 문서 요약
+def summarize_text(text):
     response = openai.Completion.create(
-      engine="text-davinci-003",
-      prompt=prompt,
-      max_tokens=150
+      engine="text-davinci-003", # 엔진 버전에 따라 변경 가능
+      prompt="Summarize the following text:\n\n" + text,
+      max_tokens=150  # 토큰 수에 따라 조정 가능
     )
     return response.choices[0].text.strip()
 
-# 챗봇 메인 함수
-def pdf_chatbot_main():
-    pdf_path = "./data/프리랜서 가이드라인 (출판본).pdf"
-    extracted_text = extract_text_from_pdf(pdf_path)
+# 추천 질문 생성
+def generate_questions(text):
+    response = openai.Completion.create(
+      engine="text-davinci-003",
+      prompt="Create questions about the following text:\n\n" + text,
+      max_tokens=100
+    )
+    return response.choices[0].text.strip()
 
-    while True:
-        question = input("질문을 입력하세요 (종료하려면 '종료'를 입력하세요): ")
-        if question.lower() == '종료':
-            break
-        answer = answer_question_with_chatbot(extracted_text, question)
-        print("답변:", answer)
+# 메인 함수
+def main(pdf_file):
+    text = extract_text_from_pdf(pdf_file)
+    summary = summarize_text(text)
+    questions = generate_questions(summary)
 
-# 챗봇 실행
-pdf_chatbot_main()
+    print("Summary:\n", summary)
+    print("\nQuestions:\n", questions)
+
+# 실행 예시
+def main(pdf_file):
+    text = extract_text_from_pdf(pdf_file)
+    summary = summarize_text(text)
+    questions = generate_questions(summary)
+
+    print("Summary:\n", summary)
+    print("\nQuestions:\n", questions)
+
+# 실행 예시
+def main(pdf_file):
+    text = extract_text_from_pdf(pdf_file)
+    summary = summarize_text(text)
+    questions = generate_questions(summary)
+
+    print("Summary:\n", summary)
+    print("\nQuestions:\n", questions)
+
+main("./data/프리랜서 가이드라인 (출판본).pdf")
